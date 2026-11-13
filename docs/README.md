@@ -10,6 +10,8 @@
 # Problem 102
 - https://cs50.harvard.edu/ai/projects/1/minesweeper/
 
+# Problem 201
+- https://cs50.harvard.edu/ai/projects/2/pagerank/
 # Trouble Shoot
 
 update50
