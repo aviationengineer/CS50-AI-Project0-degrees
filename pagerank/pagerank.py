@@ -57,7 +57,23 @@ def transition_model(corpus, page, damping_factor):
     linked to by `page`. With probability `1 - damping_factor`, choose
     a link at random chosen from all pages in the corpus.
     """
-    raise NotImplementedError
+    pages = list(corpus)
+    links = corpus[page]
+
+    # A page with no outgoing links can still lead anywhere, so treat it as
+    # linking to every page (including itself).
+    if not links:
+        links = set(pages)
+
+    count = len(pages)
+    # The random-jump probability is shared equally by every page.
+    distribution = {p: (1 - damping_factor) / count for p in pages}
+    # Add the probability of following a link, split evenly across this page's links.
+    link_probability = damping_factor / len(links)
+    for linked_page in links:
+        distribution[linked_page] += link_probability
+
+    return distribution
 
 
 def sample_pagerank(corpus, damping_factor, n):
@@ -69,7 +85,24 @@ def sample_pagerank(corpus, damping_factor, n):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    pages = list(corpus)
+    # Count how often the random surfer visits each page.
+    visits = {page: 0 for page in pages}
+
+    # The first sample starts on a page chosen uniformly at random.
+    current_page = random.choice(pages)
+    visits[current_page] += 1
+
+    # Each later sample follows the transition probabilities from the last page.
+    for _ in range(n - 1):
+        model = transition_model(corpus, current_page, damping_factor)
+        current_page = random.choices(
+            population=list(model), weights=list(model.values()), k=1
+        )[0]
+        visits[current_page] += 1
+
+    # The share of samples on each page estimates that page's PageRank.
+    return {page: visits[page] / n for page in pages}
 
 
 def iterate_pagerank(corpus, damping_factor):
@@ -81,7 +114,31 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    pages = list(corpus)
+    count = len(pages)
+    # Begin with all pages equally likely to be visited.
+    ranks = {page: 1 / count for page in pages}
+
+    while True:
+        # Compute every new rank from the same previous set of ranks.
+        updated = {}
+        for page in pages:
+            incoming_sum = 0
+            for source in pages:
+                links = corpus[source]
+                # A dangling page distributes its rank equally to all pages.
+                if not links:
+                    links = set(pages)
+                if page in links:
+                    incoming_sum += ranks[source] / len(links)
+
+            # Combine the random-jump share with contributions from incoming links.
+            updated[page] = (1 - damping_factor) / count + damping_factor * incoming_sum
+
+        # Stop once every page's rank changes by at most the required threshold.
+        if all(abs(updated[page] - ranks[page]) <= 0.001 for page in pages):
+            return updated
+        ranks = updated
 
 
 if __name__ == "__main__":
