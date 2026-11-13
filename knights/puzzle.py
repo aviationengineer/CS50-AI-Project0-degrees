@@ -14,6 +14,9 @@ BKnave = Symbol("B is a Knave")
 CKnight = Symbol("C is a Knight")
 CKnave = Symbol("C is a Knave")
 
+# Auxiliary proposition used in Puzzle 3: whether A said "I am a knave."
+ASaidKnave = Symbol("A said I am a knave")
+
 # Puzzle 0
 # A says "I am both a knight and a knave."
 # A must be exactly one type, and A's statement is true only if both role
@@ -65,10 +68,15 @@ knowledge3 = And(
     Not(And(BKnight, BKnave)),
     Or(CKnight, CKnave),
     Not(And(CKnight, CKnave)),
-    # A's statement is either "I am a knight" or "I am a knave".
-    Or(And(AKnight, AKnight), And(AKnave, AKnave)),
-    # B's statements: "A said I am a knave" and "C is a knave."
-    Biconditional(BKnight, And(AKnave, CKnave)),
+    # A says one of the two possible claims. Its truth depends on which claim
+    # was made; a knight speaks a true claim and a knave speaks a false one.
+    Biconditional(
+        AKnight,
+        Or(And(ASaidKnave, AKnave), And(Not(ASaidKnave), AKnight))
+    ),
+    # B's two statements must each match B's role independently.
+    Biconditional(BKnight, ASaidKnave),
+    Biconditional(BKnight, CKnave),
     # C says "A is a knight."
     Biconditional(CKnight, AKnight)
 )
