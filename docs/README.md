@@ -4,6 +4,8 @@
 # Problem 002
 - https://cs50.harvard.edu/ai/projects/0/tictactoe/
 
+# Problem 101
+- https://cs50.harvard.edu/ai/projects/1/knights/
 # Trouble Shoot
 
 update50
