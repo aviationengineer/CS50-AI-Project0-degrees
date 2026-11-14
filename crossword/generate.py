@@ -41,7 +41,8 @@ class CrosswordCreator():
                 if self.crossword.structure[i][j]:
                     print(letters[i][j] or " ", end="")
                 else:
-                    print("█", end="")
+                    # Use an ASCII marker so this also works in legacy Windows consoles.
+                    print("#", end="")
             print()
 
     def save(self, assignment, filename):
