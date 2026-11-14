@@ -1,9 +1,11 @@
+# Read the training data and handle command-line arguments.
 import csv
 import sys
 
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 
+# Reserve 40% of the data for evaluating the trained classifier.
 TEST_SIZE = 0.4
 
 
@@ -59,7 +61,52 @@ def load_data(filename):
     labels should be the corresponding list of labels, where each label
     is 1 if Revenue is true, and 0 otherwise.
     """
-    raise NotImplementedError
+    # Convert month abbreviations to numeric values as required by the model.
+    months = {
+        "Jan": 0,
+        "Feb": 1,
+        "Mar": 2,
+        "Apr": 3,
+        "May": 4,
+        "June": 5,
+        "Jul": 6,
+        "Aug": 7,
+        "Sep": 8,
+        "Oct": 9,
+        "Nov": 10,
+        "Dec": 11,
+    }
+    # Store the 17 input features separately from the purchase outcome.
+    evidence = []
+    labels = []
+
+    with open(filename, newline="") as data_file:
+        reader = csv.DictReader(data_file)
+        for row in reader:
+            # Convert each CSV field to the specified numeric type and order.
+            evidence.append([
+                int(row["Administrative"]),
+                float(row["Administrative_Duration"]),
+                int(row["Informational"]),
+                float(row["Informational_Duration"]),
+                int(row["ProductRelated"]),
+                float(row["ProductRelated_Duration"]),
+                float(row["BounceRates"]),
+                float(row["ExitRates"]),
+                float(row["PageValues"]),
+                float(row["SpecialDay"]),
+                months[row["Month"]],
+                int(row["OperatingSystems"]),
+                int(row["Browser"]),
+                int(row["Region"]),
+                int(row["TrafficType"]),
+                int(row["VisitorType"] == "Returning_Visitor"),
+                int(row["Weekend"] == "TRUE"),
+            ])
+            # Encode the purchase outcome as 1 for true and 0 for false.
+            labels.append(int(row["Revenue"] == "TRUE"))
+
+    return evidence, labels
 
 
 def train_model(evidence, labels):
@@ -67,7 +114,10 @@ def train_model(evidence, labels):
     Given a list of evidence lists and a list of labels, return a
     fitted k-nearest neighbor model (k=1) trained on the data.
     """
-    raise NotImplementedError
+    # Use the single closest training example to classify each session.
+    model = KNeighborsClassifier(n_neighbors=1)
+    model.fit(evidence, labels)
+    return model
 
 
 def evaluate(labels, predictions):
@@ -85,7 +135,23 @@ def evaluate(labels, predictions):
     representing the "true negative rate": the proportion of
     actual negative labels that were accurately identified.
     """
-    raise NotImplementedError
+    # Count correctly identified purchasers and all actual purchasers.
+    true_positives = sum(
+        actual == 1 and predicted == 1
+        for actual, predicted in zip(labels, predictions)
+    )
+    actual_positives = sum(label == 1 for label in labels)
+    # Count correctly identified non-purchasers and all actual non-purchasers.
+    true_negatives = sum(
+        actual == 0 and predicted == 0
+        for actual, predicted in zip(labels, predictions)
+    )
+    actual_negatives = sum(label == 0 for label in labels)
+
+    # Divide each correct count by its actual class total to get the rates.
+    sensitivity = true_positives / actual_positives
+    specificity = true_negatives / actual_negatives
+    return sensitivity, specificity
 
 
 if __name__ == "__main__":
