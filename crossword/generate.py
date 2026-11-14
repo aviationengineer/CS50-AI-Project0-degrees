@@ -1,3 +1,6 @@
+# Crossword puzzle generator using constraint satisfaction and backtracking.
+# Variables are word slots, domains are vocabulary words, and overlaps define
+# the letter-matching constraints between neighboring slots.
 import sys
 
 from crossword import *
@@ -41,7 +44,7 @@ class CrosswordCreator():
                 if self.crossword.structure[i][j]:
                     print(letters[i][j] or " ", end="")
                 else:
-                    # Use an ASCII marker so this also works in legacy Windows consoles.
+                    # Use ASCII '#' for blocked cells to support legacy console encodings.
                     print("#", end="")
             print()
 
@@ -100,7 +103,8 @@ class CrosswordCreator():
         (Remove any values that are inconsistent with a variable's unary
          constraints; in this case, the length of the word.)
         """
-        # Keep only words whose length satisfies each variable's unary constraint.
+        # A slot's only unary constraint is its length, so discard every
+        # vocabulary word that cannot fit before checking intersections.
         for var in self.crossword.variables:
             self.domains[var] = {
                 word for word in self.domains[var]
@@ -116,11 +120,13 @@ class CrosswordCreator():
         Return True if a revision was made to the domain of `x`; return
         False if no revision was made.
         """
-        # An overlapped pair needs matching letters at the shared square.
+        # An arc without an intersection imposes no restriction on either domain.
         overlap = self.crossword.overlaps[x, y]
         if overlap is None:
             return False
 
+        # A word for x is supported only if some word for y has the same
+        # character at the two positions that occupy their shared square.
         i, j = overlap
         unsupported = {
             word_x for word_x in self.domains[x]
@@ -140,7 +146,8 @@ class CrosswordCreator():
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-        # Start with every directed neighboring pair unless a queue was supplied.
+        # Arcs are directed: both (x, y) and (y, x) must be checked. When the
+        # caller supplies a queue, copy it so processing does not mutate it.
         if arcs is None:
             queue = [
                 (x, y) for x in self.crossword.variables
@@ -154,6 +161,8 @@ class CrosswordCreator():
             if self.revise(x, y):
                 if not self.domains[x]:
                     return False
+                # Shrinking x can invalidate support for its other neighbors;
+                # queue those arcs again, excluding y which was just checked.
                 queue.extend(
                     (z, x) for z in self.crossword.neighbors(x) if z != y
                 )
@@ -164,7 +173,8 @@ class CrosswordCreator():
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        # Every variable must appear as a key for the assignment to be complete.
+        # Completion depends on coverage of all slots; constraint validity is
+        # checked separately by consistent().
         return all(var in assignment for var in self.crossword.variables)
 
     def consistent(self, assignment):
@@ -172,12 +182,14 @@ class CrosswordCreator():
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
-        # Enforce distinct words, correct lengths, and matching assigned overlaps.
+        # The puzzle forbids reusing any word, including among partial choices.
         values = list(assignment.values())
         if len(values) != len(set(values)):
             return False
 
         for var, word in assignment.items():
+            # Check unary length validity, then check intersections whose two
+            # endpoint variables have both been assigned so far.
             if len(word) != var.length:
                 return False
             for neighbor in self.crossword.neighbors(var):
@@ -194,7 +206,9 @@ class CrosswordCreator():
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        # Count domain values removed from each unassigned neighbor by this choice.
+        # Score each candidate by the number of neighbor words it would rule
+        # out; smaller scores are preferred by the least-constraining-values
+        # heuristic. Already assigned neighbors need no further choices.
         def ruled_out(value):
             count = 0
             for neighbor in self.crossword.neighbors(var):
@@ -217,7 +231,9 @@ class CrosswordCreator():
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        # Break MRV ties by choosing the variable with the most neighbors.
+        # Minimum remaining values chooses the smallest domain first. Negating
+        # degree makes Python's ascending min prefer the most-connected slot
+        # when domain sizes tie.
         unassigned = [
             var for var in self.crossword.variables if var not in assignment
         ]
@@ -238,7 +254,8 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
-        # Try least-constraining values and recursively keep consistent choices.
+        # A complete assignment is the base case. Otherwise, explore candidate
+        # words in least-constraining order and backtrack after a dead end.
         if self.assignment_complete(assignment):
             return assignment
 
