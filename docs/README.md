@@ -12,6 +12,9 @@
 
 # Problem 201
 - https://cs50.harvard.edu/ai/projects/2/pagerank/
+
+# Problem 202
+- https://cs50.harvard.edu/ai/projects/2/heredity/
 # Trouble Shoot
 
 update50
