@@ -1,3 +1,5 @@
+"""Nim game and a Q-learning AI that learns to choose strong moves."""
+
 import math
 import random
 import time
@@ -101,7 +103,8 @@ class NimAI():
         Return the Q-value for the state `state` and the action `action`.
         If no Q-value exists yet in `self.q`, return 0.
         """
-        raise NotImplementedError
+        # Lists cannot be dictionary keys, so store the state and action as tuples.
+        return self.q.get((tuple(state), tuple(action)), 0)
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
         """
@@ -118,7 +121,10 @@ class NimAI():
         `alpha` is the learning rate, and `new value estimate`
         is the sum of the current reward and estimated future rewards.
         """
-        raise NotImplementedError
+        # Move the old estimate toward the reward plus the estimated future value.
+        self.q[(tuple(state), tuple(action))] = old_q + self.alpha * (
+            reward + future_rewards - old_q
+        )
 
     def best_future_reward(self, state):
         """
@@ -130,7 +136,12 @@ class NimAI():
         Q-value in `self.q`. If there are no available actions in
         `state`, return 0.
         """
-        raise NotImplementedError
+        actions = Nim.available_actions(state)
+        # The terminal state has no next action and therefore no future reward.
+        if not actions:
+            return 0
+        # Unseen state-action pairs have value 0 through get_q_value.
+        return max(self.get_q_value(state, action) for action in actions)
 
     def choose_action(self, state, epsilon=True):
         """
@@ -147,7 +158,22 @@ class NimAI():
         If multiple actions have the same Q-value, any of those
         options is an acceptable return value.
         """
-        raise NotImplementedError
+        actions = list(Nim.available_actions(state))
+        # There is no legal move in a terminal state.
+        if not actions:
+            return None
+
+        # Epsilon-greedy exploration occasionally tries any legal move at random.
+        if epsilon and random.random() < self.epsilon:
+            return random.choice(actions)
+
+        # Choose randomly among actions tied for the highest Q-value.
+        best_value = max(self.get_q_value(state, action) for action in actions)
+        best_actions = [
+            action for action in actions
+            if self.get_q_value(state, action) == best_value
+        ]
+        return random.choice(best_actions)
 
 
 def train(n):
