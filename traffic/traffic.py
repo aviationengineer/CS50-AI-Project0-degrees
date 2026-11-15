@@ -1,3 +1,9 @@
+"""Classify German traffic sign images with a convolutional neural network.
+
+The data loading and model-building routines below implement the project
+requirements; see README.md for design remarks and experimentation notes.
+"""
+
 import cv2
 import numpy as np
 import os
@@ -58,7 +64,27 @@ def load_data(data_dir):
     be a list of integer labels, representing the categories for each of the
     corresponding `images`.
     """
-    raise NotImplementedError
+    images = []
+    labels = []
+
+    # Folder names are the class labels, so visit them in numeric order.
+    for category in range(NUM_CATEGORIES):
+        category_dir = os.path.join(data_dir, str(category))
+        for filename in os.listdir(category_dir):
+            image_path = os.path.join(category_dir, filename)
+            image = cv2.imread(image_path)
+
+            # Ignore files OpenCV cannot decode; they cannot be model inputs.
+            if image is None:
+                continue
+
+            # OpenCV resizes using (width, height), producing uniform inputs.
+            image = cv2.resize(image, (IMG_WIDTH, IMG_HEIGHT))
+            images.append(image)
+            # Keep each label aligned with the image just appended.
+            labels.append(category)
+
+    return images, labels
 
 
 def get_model():
@@ -67,7 +93,30 @@ def get_model():
     `input_shape` of the first layer is `(IMG_WIDTH, IMG_HEIGHT, 3)`.
     The output layer should have `NUM_CATEGORIES` units, one for each category.
     """
-    raise NotImplementedError
+    # Scale raw pixel values before extracting visual features.
+    model = tf.keras.Sequential([
+        tf.keras.layers.Rescaling(1.0 / 255, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)),
+        # Convolution and pooling stages learn patterns while reducing size.
+        tf.keras.layers.Conv2D(32, (3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+        tf.keras.layers.Flatten(),
+        # Dense classification layer with dropout to limit overfitting.
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dropout(0.5),
+        # Softmax returns a probability for each traffic sign category.
+        tf.keras.layers.Dense(NUM_CATEGORIES, activation="softmax")
+    ])
+
+    # Match the loss to the one-hot labels created in main().
+    model.compile(
+        optimizer="adam",
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+
+    return model
 
 
 if __name__ == "__main__":
