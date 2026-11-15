@@ -20,6 +20,8 @@
 - https://cs50.harvard.edu/ai/projects/3/crossword/
 # Problem 401
 - https://cs50.harvard.edu/ai/projects/4/shopping/
+# Problem 402
+- https://cs50.harvard.edu/ai/projects/4/nim/
 # Trouble Shoot
 
 update50
