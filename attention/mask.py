@@ -45,8 +45,15 @@ def get_mask_token_index(mask_token_id, inputs):
     Return the index of the token with the specified `mask_token_id`, or
     `None` if not present in the `inputs`.
     """
-    # TODO: Implement this function
-    raise NotImplementedError
+    # BatchEncoding stores token IDs as a batch; this program processes one
+    # sentence, so inspect the IDs in the first (and only) sequence.
+    input_ids = inputs["input_ids"][0].numpy().tolist()
+    try:
+        # The returned position is zero-based, as required by the logits index.
+        return input_ids.index(mask_token_id)
+    except ValueError:
+        # list.index raises ValueError when the sentence has no mask token.
+        return None
 
 
 
@@ -55,8 +62,10 @@ def get_color_for_attention_score(attention_score):
     Return a tuple of three integers representing a shade of gray for the
     given `attention_score`. Each value should be in the range [0, 255].
     """
-    # TODO: Implement this function
-    raise NotImplementedError
+    # Scale the score linearly: 0 maps to black and 1 maps to white.
+    gray = round(float(attention_score) * 255)
+    # Equal RGB channels produce a neutral shade of gray.
+    return (gray, gray, gray)
 
 
 
@@ -70,13 +79,19 @@ def visualize_attentions(tokens, attentions):
     include both the layer number (starting count from 1) and head number
     (starting count from 1).
     """
-    # TODO: Update this function to produce diagrams for all layers and heads.
-    generate_diagram(
-        1,
-        1,
-        tokens,
-        attentions[0][0][0]
-    )
+    # Enumerate the model's layers and heads, converting their zero-based
+    # Python indices to the one-based labels used in diagram filenames.
+    for layer_index, layer in enumerate(attentions):
+        # Each layer has shape [batch, heads, tokens, tokens].
+        for head_index in range(layer.shape[1]):
+            # Batch index 0 selects this input; head_index selects one head's
+            # token-to-token attention matrix for the diagram.
+            generate_diagram(
+                layer_index + 1,
+                head_index + 1,
+                tokens,
+                layer[0][head_index]
+            )
 
 
 def generate_diagram(layer_number, head_number, tokens, attention_weights):
