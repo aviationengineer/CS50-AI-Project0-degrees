@@ -1,3 +1,9 @@
+"""Parse English sentences and print their noun phrase chunks.
+
+The terminal vocabulary is provided by the assignment; the grammar and
+helper functions below describe how those words combine into sentences.
+"""
+
 import nltk
 import sys
 
@@ -15,9 +21,35 @@ V -> "smiled" | "tell" | "were"
 """
 
 NONTERMINALS = """
-S -> N V
+# A sentence is a noun phrase followed by a verb phrase; clauses can join.
+S -> NP VP
+S -> S Conj S
+# Noun phrases can be simple nouns, determiner phrases, or include modifiers.
+NP -> N
+NP -> Det Nominal
+NP -> NP PP
+NP -> NP Conj NP
+# Adjectives and prepositional phrases extend the head noun.
+Nominal -> N
+Nominal -> Adj Nominal
+Nominal -> Nominal PP
+# Verb phrases cover intransitive, transitive, and prepositional constructions.
+VP -> V
+VP -> V NP
+VP -> V PP
+VP -> V Adv
+VP -> V NP PP
+VP -> Adv VP
+VP -> VP PP
+VP -> VP Adv
+VP -> VP Conj VP
+VP -> V S
+# Prepositional phrases attach a noun phrase or adverb to a preposition.
+PP -> P NP
+PP -> P Adv
 """
 
+# Build the chart parser once from the grammar rules above.
 grammar = nltk.CFG.fromstring(NONTERMINALS + TERMINALS)
 parser = nltk.ChartParser(grammar)
 
@@ -62,7 +94,9 @@ def preprocess(sentence):
     and removing any word that does not contain at least one alphabetic
     character.
     """
-    raise NotImplementedError
+    # Tokenize first, then keep only tokens containing an alphabetic character.
+    return [word.lower() for word in nltk.word_tokenize(sentence)
+            if any(character.isalpha() for character in word)]
 
 
 def np_chunk(tree):
@@ -72,7 +106,13 @@ def np_chunk(tree):
     whose label is "NP" that does not itself contain any other
     noun phrases as subtrees.
     """
-    raise NotImplementedError
+    # Keep NP subtrees that have no NP descendants, so chunks do not overlap.
+    chunks = []
+    for subtree in tree.subtrees(lambda node: node.label() == "NP"):
+        if not any(child.label() == "NP" for child in subtree.subtrees()
+                   if child is not subtree):
+            chunks.append(subtree)
+    return chunks
 
 
 if __name__ == "__main__":
