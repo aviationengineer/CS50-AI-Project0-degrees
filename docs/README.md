@@ -22,6 +22,9 @@
 - https://cs50.harvard.edu/ai/projects/4/shopping/
 # Problem 402
 - https://cs50.harvard.edu/ai/projects/4/nim/
+
+# Problem 602
+- https://cs50.harvard.edu/ai/projects/6/attention/
 # Trouble Shoot
 
 update50
