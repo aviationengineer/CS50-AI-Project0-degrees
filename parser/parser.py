@@ -21,30 +21,37 @@ V -> "smiled" | "tell" | "were"
 """
 
 NONTERMINALS = """
-# A sentence is a noun phrase followed by a verb phrase; clauses can join.
+# S is the start symbol. A full clause has a subject NP and a predicate VP.
 S -> NP VP
+# Coordinated clauses allow examples such as "Holmes sat and he chuckled."
 S -> S Conj S
-# Noun phrases can be simple nouns, determiner phrases, or include modifiers.
+# A noun phrase can be a bare noun, or a determiner plus a complete nominal.
 NP -> N
 NP -> Det Nominal
+# Allow post-noun prepositional modifiers and coordinated noun phrases.
 NP -> NP PP
 NP -> NP Conj NP
-# Adjectives and prepositional phrases extend the head noun.
+# Every nominal has a noun at its center; adjectives can precede that noun.
 Nominal -> N
 Nominal -> Adj Nominal
+# A prepositional phrase can also modify the noun: "the day before Thursday".
 Nominal -> Nominal PP
-# Verb phrases cover intransitive, transitive, and prepositional constructions.
+# A verb alone handles intransitive predicates such as "Holmes sat".
 VP -> V
+# A verb may take a direct object, a prepositional phrase, or an adverb.
 VP -> V NP
 VP -> V PP
 VP -> V Adv
+# Objects may also be followed by a prepositional phrase.
 VP -> V NP PP
+# Adverbs and prepositional phrases can modify a larger verb phrase.
 VP -> Adv VP
 VP -> VP PP
 VP -> VP Adv
+# Coordinate predicates and complement clauses are allowed.
 VP -> VP Conj VP
 VP -> V S
-# Prepositional phrases attach a noun phrase or adverb to a preposition.
+# Prepositions take a noun phrase or, in this vocabulary, an adverb as object.
 PP -> P NP
 PP -> P Adv
 """
@@ -55,6 +62,7 @@ parser = nltk.ChartParser(grammar)
 
 
 def main():
+    """Read a sentence, parse it, and display its parse and NP chunks."""
 
     # If filename specified, read sentence from file
     if len(sys.argv) == 2:
@@ -65,10 +73,10 @@ def main():
     else:
         s = input("Sentence: ")
 
-    # Convert input into list of words
+    # Normalize and tokenize input before passing it to the grammar parser.
     s = preprocess(s)
 
-    # Attempt to parse sentence
+    # The chart parser may raise ValueError for token sequences it cannot use.
     try:
         trees = list(parser.parse(s))
     except ValueError as e:
@@ -78,10 +86,11 @@ def main():
         print("Could not parse sentence.")
         return
 
-    # Print each tree with noun phrase chunks
+    # Print every valid parse because a sentence can have multiple analyses.
     for tree in trees:
         tree.pretty_print()
 
+        # Flatten each NP chunk to show its words in sentence order.
         print("Noun Phrase Chunks")
         for np in np_chunk(tree):
             print(" ".join(np.flatten()))
@@ -94,7 +103,8 @@ def preprocess(sentence):
     and removing any word that does not contain at least one alphabetic
     character.
     """
-    # Tokenize first, then keep only tokens containing an alphabetic character.
+    # Tokenize first, then keep only tokens containing at least one letter.
+    # Lowercasing makes the tokens match the lowercase terminal vocabulary.
     return [word.lower() for word in nltk.word_tokenize(sentence)
             if any(character.isalpha() for character in word)]
 
@@ -106,7 +116,8 @@ def np_chunk(tree):
     whose label is "NP" that does not itself contain any other
     noun phrases as subtrees.
     """
-    # Keep NP subtrees that have no NP descendants, so chunks do not overlap.
+    # Visit each NP in the tree and exclude any NP containing a smaller NP.
+    # This leaves the smallest complete noun phrases as the requested chunks.
     chunks = []
     for subtree in tree.subtrees(lambda node: node.label() == "NP"):
         if not any(child.label() == "NP" for child in subtree.subtrees()
